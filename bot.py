@@ -1,9 +1,8 @@
-class EmptyListError(Exception):
-    pass
 
+from address_book import AddressBook, Birthday, Record
+from errors import BirthdayError, EmptyListError, IvalidArgsNumberError, PhoneError
 
-class IvalidArgsNumberError(Exception):
-    pass
+book = AddressBook()
 
 
 def parse_input(user_input):
@@ -17,13 +16,17 @@ def input_error_handler(func):
         try:
             return func(*args, **kwargs)
         except ValueError:
-            return "Give me name and phone please."
+            return "Give me correct data."
         except KeyError:
             return "Such a user does not exist."
         except EmptyListError:
             return "Contacts list is empty."
         except IvalidArgsNumberError:
             return "Invalid number of arguments."
+        except BirthdayError:
+            return "Invalid input format. Birthday should be in the format DD.MM.YYYY"
+        except PhoneError:
+            return "Invalid input format. Phone number must be in digital format, have 10 characters and not repeat an existing one."
     return inner
 
 
@@ -31,8 +34,18 @@ def input_error_handler(func):
 def add_contact(args, contacts):
     if len(args) != 2:
         raise IvalidArgsNumberError
+
     name, phone = args
-    contacts[name] = phone
+    if not phone.isdigit() or len(phone) != 1:
+        raise PhoneError
+
+    recCon = contacts.find(name)
+    if recCon != None:
+        recCon.add_phone(phone)
+    else:
+        record = Record(name)
+        record.add_phone(phone)
+        contacts.add_record(record)
     return "Contact added."
 
 
@@ -41,8 +54,13 @@ def change_contact(args, contacts):
     if len(args) != 2:
         raise IvalidArgsNumberError
     name, phone = args
-    contacts[name] = phone
-    return "Contact updated."
+    recCon = contacts.find(name)
+
+    if recCon != None:
+        recCon.clear_phones()
+        recCon.add_phone(phone)
+        return "Contact updated."
+    raise KeyError
 
 
 @input_error_handler
@@ -50,10 +68,11 @@ def show_phone(args, contacts):
     if len(args) != 1:
         raise IvalidArgsNumberError
     name = args[0]
-    if name not in contacts:
+    recCon = contacts.find(name)
+    if recCon == None:
         raise KeyError
     else:
-        return contacts[name]
+        return ', '.join([f"{phone}" for phone in recCon.phones])
 
 
 @input_error_handler
@@ -66,14 +85,52 @@ def show_all(args, contacts):
 
     contacts_list = []
 
-    for name, phone in contacts.items():
-        contacts_list.append(f"{name}: {phone}")
+    for record in contacts.values():
+        contacts_list.append(f"{record}")
 
     return '\n'.join(contacts_list)
 
 
+@input_error_handler
+def add_birthday(args, contacts):
+    if len(args) != 2:
+        raise IvalidArgsNumberError
+
+    name, date = args
+    recCon = contacts.find(name)
+
+    if recCon == None:
+        raise KeyError
+    try:
+        recCon.add_birthday(Birthday(date))
+    except:
+        raise BirthdayError
+    return "Birthday added."
+
+
+@input_error_handler
+def show_birthday(args, contacts):
+    if len(args) != 1:
+        raise IvalidArgsNumberError
+    name = args[0]
+    recCon = contacts.find(name)
+
+    if recCon == None:
+        raise KeyError
+    elif recCon.birthday == None:
+        return "Birthday not specified."
+
+    return recCon.birthday.value.date().strftime('%d.%m.%Y')
+
+
+def birthdays(contacts):
+    upcoming = contacts.get_birthdays_per_week()
+    if upcoming:
+        return "\n".join([f"{week_day}: {', '.join(names)}" for week_day, names in upcoming.items()])
+    return "No birthdays next week."
+
+
 def main():
-    contacts = {}
     print("Welcome to the assistant bot!")
 
     while True:
@@ -86,13 +143,19 @@ def main():
         elif command == "hello":
             print("How can I help you?")
         elif command == "add":
-            print(add_contact(args, contacts))
+            print(add_contact(args, book))
         elif command == "change":
-            print(change_contact(args, contacts))
+            print(change_contact(args, book))
         elif command == "phone":
-            print(show_phone(args, contacts))
+            print(show_phone(args, book))
         elif command == "all":
-            print(show_all(args, contacts))
+            print(show_all(args, book))
+        elif command == "add-birthday":
+            print(add_birthday(args, book))
+        elif command == "show-birthday":
+            print(show_birthday(args, book))
+        elif command == "birthdays":
+            print(birthdays(book))
         else:
             print("Invalid command.")
 

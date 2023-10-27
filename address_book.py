@@ -1,4 +1,7 @@
 from collections import UserDict
+from datetime import datetime
+from collections import defaultdict
+from errors import PhoneError
 
 
 class Field:
@@ -15,37 +18,34 @@ class Name(Field):
 
 class Phone(Field):
     def __init__(self, phone):
-        if not phone.isdigit() or len(phone) != 10:
-            raise ValueError("Please write a 10-digit number.")
         super().__init__(phone)
+
+
+class Birthday:
+    def __init__(self, value):
+        self.value = datetime.strptime(value, '%d.%m.%Y')
 
 
 class Record:
     def __init__(self, name):
         self.name = Name(name)
         self.phones = []
+        self.birthday = None
 
     def add_phone(self, phone):
-        phone_instance = Phone(phone)
-        self.phones.append(phone_instance)
+        for ph in self.phones:
+            if phone == ph.value:
+                raise PhoneError
+        self.phones.append(Phone(phone))
 
-    def remove_phone(self, new_phone):
-        for phone in self.phones:
-            if phone.value == new_phone:
-                self.phones.remove(phone)
+    def clear_phones(self):
+        self.phones = []
 
-    def edit_phone(self, old_phone, new_phone):
-        for phone in self.phones:
-            if phone.value == old_phone:
-                phone.value = new_phone
-
-    def find_phone(self, phone_to_find):
-        for phone in self.phones:
-            if phone.value == phone_to_find:
-                return phone
+    def add_birthday(self, value):
+        self.birthday = value
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(phone.value for phone in self.phones)}"
+        return f"Contact: name: {self.name.value}; phones: [{', '.join(phone.value for phone in self.phones)}]; birthday: {self.birthday.value.date().strftime('%d.%m.%Y') if self.birthday != None else 'Not specified.'}"
 
 
 class AddressBook(UserDict):
@@ -59,3 +59,30 @@ class AddressBook(UserDict):
     def delete(self, name):
         if name in self.data:
             self.data.pop(name)
+
+    def get_birthdays_per_week(self):
+        next_week_birthdays = defaultdict(list)
+
+        today = datetime.today().date()
+
+        for name, value in self.data.items():
+            if value.birthday == None:
+                continue
+
+            birthday = value.birthday.value.date()
+            birthday_this_year = birthday.replace(year=today.year)
+
+            if birthday_this_year < today:
+                birthday_this_year = birthday.replace(year=today.year + 1)
+
+            delta_days = (birthday_this_year - today).days
+            if delta_days > 6:
+                continue
+
+            day_of_week = birthday_this_year.strftime("%A")
+            if day_of_week == "Saturday" or day_of_week == "Sunday":
+                next_week_birthdays["Monday"].append(name)
+            else:
+                next_week_birthdays[day_of_week].append(name)
+
+        return next_week_birthdays
