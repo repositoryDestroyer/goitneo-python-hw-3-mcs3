@@ -1,1 +1,1 @@
-# goitneo-python-hw-2-mcs3
+# goitneo-python-hw-3-mcs3
