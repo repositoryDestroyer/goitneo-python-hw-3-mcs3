@@ -1,7 +1,7 @@
 from collections import UserDict
 from datetime import datetime
 from collections import defaultdict
-from errors import PhoneError
+from errors import BirthdayError, PhoneError
 
 
 class Field:
@@ -17,13 +17,23 @@ class Name(Field):
 
 
 class Phone(Field):
-    def __init__(self, phone):
-        super().__init__(phone)
+    def __init__(self, value):
+        if not value.isdigit() or len(value) != 10:
+            raise PhoneError(
+                "Invalid input format. Phone number must be in digital format, have 10 characters")
+        super().__init__(value)
 
 
 class Birthday:
     def __init__(self, value):
-        self.value = datetime.strptime(value, '%d.%m.%Y')
+        try:
+            self.value = datetime.strptime(value, '%d.%m.%Y')
+        except ValueError:
+            raise BirthdayError(
+                "Invalid input format. Birthday should be in the format DD.MM.YYYY")
+
+    def __str__(self):
+        return self.value.strftime('%d.%m.%Y')
 
 
 class Record:
@@ -35,17 +45,19 @@ class Record:
     def add_phone(self, phone):
         for ph in self.phones:
             if phone == ph.value:
-                raise PhoneError
+                raise PhoneError(
+                    "Invalid input format. Phone number must not repeat an existing one.")
         self.phones.append(Phone(phone))
 
     def clear_phones(self):
         self.phones = []
 
     def add_birthday(self, value):
-        self.birthday = value
+        self.birthday = Birthday(value)
 
     def __str__(self):
-        return f"Contact: name: {self.name.value}; phones: [{', '.join(phone.value for phone in self.phones)}]; birthday: {self.birthday.value.date().strftime('%d.%m.%Y') if self.birthday != None else 'Not specified.'}"
+        phones = ', '.join(phone.value for phone in self.phones)
+        return f"Contact: name: {self.name.value}; phones: {phones}; birthday: {self.birthday if self.birthday else 'Not specified.'}"
 
 
 class AddressBook(UserDict):
@@ -66,7 +78,7 @@ class AddressBook(UserDict):
         today = datetime.today().date()
 
         for name, value in self.data.items():
-            if value.birthday == None:
+            if not value.birthday:
                 continue
 
             birthday = value.birthday.value.date()
