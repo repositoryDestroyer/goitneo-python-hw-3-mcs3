@@ -19,14 +19,16 @@ def input_error_handler(func):
             return "Give me correct data."
         except KeyError:
             return "Such a user does not exist."
+        except IndexError:
+            return "Invalid number of arguments."
         except EmptyListError:
             return "Contacts list is empty."
         except IvalidArgsNumberError:
             return "Invalid number of arguments."
-        except BirthdayError:
-            return "Invalid input format. Birthday should be in the format DD.MM.YYYY"
-        except PhoneError:
-            return "Invalid input format. Phone number must be in digital format, have 10 characters and not repeat an existing one."
+        except BirthdayError as e:
+            return e
+        except PhoneError as e:
+            return e
     return inner
 
 
@@ -36,11 +38,11 @@ def add_contact(args, contacts):
         raise IvalidArgsNumberError
 
     name, phone = args
-    if not phone.isdigit() or len(phone) != 1:
-        raise PhoneError
+    # if not phone.isdigit() or len(phone) != 1:
+    #     raise PhoneError
 
     recCon = contacts.find(name)
-    if recCon != None:
+    if recCon:
         recCon.add_phone(phone)
     else:
         record = Record(name)
@@ -56,7 +58,7 @@ def change_contact(args, contacts):
     name, phone = args
     recCon = contacts.find(name)
 
-    if recCon != None:
+    if recCon:
         recCon.clear_phones()
         recCon.add_phone(phone)
         return "Contact updated."
@@ -69,7 +71,7 @@ def show_phone(args, contacts):
         raise IvalidArgsNumberError
     name = args[0]
     recCon = contacts.find(name)
-    if recCon == None:
+    if not recCon:
         raise KeyError
     else:
         return ', '.join([f"{phone}" for phone in recCon.phones])
@@ -99,28 +101,29 @@ def add_birthday(args, contacts):
     name, date = args
     recCon = contacts.find(name)
 
-    if recCon == None:
+    if not recCon:
         raise KeyError
-    try:
-        recCon.add_birthday(Birthday(date))
-    except:
-        raise BirthdayError
+    # try:
+    recCon.add_birthday(date) # використовуйте однаковий формат даних для всіх методів
+    # except:
+    #     raise BirthdayError
     return "Birthday added."
 
 
 @input_error_handler
 def show_birthday(args, contacts):
-    if len(args) != 1:
-        raise IvalidArgsNumberError
+    # if len(args) != 1: без цієї перевірки можна обійтися, при зверненні до відсутнього індексу - виникне IndexError  
+    #     raise IvalidArgsNumberError
     name = args[0]
     recCon = contacts.find(name)
 
-    if recCon == None:
-        raise KeyError
-    elif recCon.birthday == None:
+    if not recCon:
+        raise KeyError # на цьому місці робота функції закінчиться, тому можна використати наступним if
+    
+    if not recCon.birthday:
         return "Birthday not specified."
 
-    return recCon.birthday.value.date().strftime('%d.%m.%Y')
+    return str(recCon.birthday)
 
 
 def birthdays(contacts):
